@@ -88,7 +88,7 @@ def main():
         max_ordinal_digits = len(str(len(key_phrases)))
 
         print(
-            f"{'Pos':<{max_ordinal_digits + 4}}| {'Phrase':<{max_phrase_length + 4}} | Count")
+            f"{'Pos.':<{max_ordinal_digits + 4}}| {'Phrase':<{max_phrase_length + 4}} | Count")
         print("-" * (max_ordinal_digits + max_phrase_length + 19))
 
         last_count = None
