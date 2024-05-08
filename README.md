@@ -18,5 +18,3 @@ pip install nltk
 ```
 pip install requests
 ```
-
-This project is licensed under the [MIT LICENSE](LICENSE.md).
