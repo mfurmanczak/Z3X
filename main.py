@@ -6,12 +6,17 @@ from nltk.tokenize import word_tokenize
 from nltk.util import ngrams
 import string
 
+#Change the number of articles and phrases to analyze
+NUM_PHRASES = 5
+NUM_ARTICLES = 3
+
 url = "https://blog.hubspot.com/"
 response = requests.get(url)
 soup = BeautifulSoup(response.text, 'html.parser')
 
 article_divs = soup.find_all('h3', class_='blog-post-card-title')
-article_links = [h3.find('a')['href'] for h3 in article_divs[:3]]
+article_links = [h3.find('a')['href'] for h3 in article_divs[:NUM_ARTICLES]]
+
 
 def get_article_content(link):
     response = requests.get(link)
@@ -22,6 +27,7 @@ def get_article_content(link):
     else:
         return ""
 
+
 def get_article_title(link):
     response = requests.get(link)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -31,36 +37,81 @@ def get_article_title(link):
     else:
         return "No Title Found"
 
+
 def analyze_article(content):
-    words = content.split()  
+    words = content.split()
     num_words = len(words)
 
-    num_letters = sum(len(word) for word in words if word.isalnum())  
+    num_letters = sum(len(word) for word in words if word.isalnum())
 
     stop_words = set(stopwords.words('english'))
     words = [word.lower() for word in words if word.lower() not in stop_words]
 
-    words = [''.join(char for char in word if char not in string.punctuation + '—') for word in words]
+    words = [''.join(
+        char for char in word if char not in string.punctuation + '—') for word in words]
     words = [word for word in words if word and word != '-']
 
     phrases = []
-    for n in range(1, 4):  
+    for n in range(1, 4):
         phrases.extend(ngrams(words, n))
 
-    key_phrases = Counter(phrases).most_common(5)
+    key_phrases = Counter(phrases).most_common()
+
+    last_count = key_phrases[NUM_PHRASES -
+                             1][1] if len(key_phrases) >= NUM_PHRASES else 0
+
+    additional_phrases = []
+    for phrase, count in key_phrases[NUM_PHRASES:]:
+        if count == last_count:
+            additional_phrases.append((phrase, count))
+        else:
+            break
+
+    key_phrases = key_phrases[:NUM_PHRASES] + additional_phrases
 
     return num_words, num_letters, key_phrases
 
-for link in article_links:
-    title = get_article_title(link)
-    print("Article:", title)
-    content = get_article_content(link)
-    num_words, num_letters, key_phrases = analyze_article(content)
-    print("Number of words:", num_words)
-    print("Number of letters:", num_letters)
-    print("Top 5 key phrases:")
-    for i, (phrase, count) in enumerate(key_phrases):
-        ordinal_suffix = "th" if 11 <= i + 1 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get((i + 1) % 10, "th")
-        phrase_str = ' '.join(phrase) if len(phrase) > 1 else phrase[0]
-        print(f"{i + 1}{ordinal_suffix} phrase: {phrase_str} (count: {count})")
-    print()
+
+def main():
+    for link in article_links:
+        title = get_article_title(link)
+        print("Article:", title)
+        content = get_article_content(link)
+        num_words, num_letters, key_phrases = analyze_article(content)
+        print("Number of words:", num_words)
+        print("Number of letters:", num_letters)
+        print("Top 5 key phrases:")
+
+        max_phrase_length = max(len(' '.join(phrase)) if len(
+            phrase) > 1 else len(phrase[0]) for phrase, _ in key_phrases)
+
+        max_ordinal_digits = len(str(len(key_phrases)))
+
+        print(
+            f"{'Pos':<{max_ordinal_digits + 4}}| {'Phrase':<{max_phrase_length + 4}} | Count")
+        print("-" * (max_ordinal_digits + max_phrase_length + 19))
+
+        last_count = None
+        last_ordinal = 0
+
+        for i, (phrase, count) in enumerate(key_phrases):
+            last_count = count
+            last_ordinal = i
+
+            if i < NUM_PHRASES:
+                ordinal_suffix = "th" if 11 <= last_ordinal + \
+                    1 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get((last_ordinal + 1) % 10, "th")
+                phrase_str = ' '.join(phrase) if len(phrase) > 1 else phrase[0]
+                ordinal = f"{last_ordinal + 1}{ordinal_suffix:<2}"
+                print(
+                    f"{ordinal:<{max_ordinal_digits + 4}}| {phrase_str:<{max_phrase_length+4}} | {count}")
+            else:
+                phrase_str = ' '.join(phrase) if len(phrase) > 1 else phrase[0]
+                print(
+                    f"{' ' * (max_ordinal_digits + 4)}| {phrase_str:<{max_phrase_length+4}} | {count}")
+
+        print()
+
+
+if __name__ == "__main__":
+    main()
